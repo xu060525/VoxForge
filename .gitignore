@@ -15,3 +15,18 @@ env/
 resources/model/
 docs/
 captures/
+
+# === Day 6 & 7 打包新增 (必须忽略) ===
+# PyInstaller 生成的临时构建目录
+build/
+# PyInstaller 生成的最终发布目录 (exe太大了，不要传git，用 Release 功能发布)
+dist/
+# PyInstaller 的 spec 文件 (⚠️这个通常建议保留！它是打包配方，应该上传)
+# 如果你不想传也可以忽略，但建议保留，方便别人或你自己以后打包
+# VoxForge.spec 
+
+# === 运行时产生的数据 ===
+# 截图文件夹 (不要把你的隐私截图传上去)
+captures/
+# 产生的日志文件 (如果有)
+*.log

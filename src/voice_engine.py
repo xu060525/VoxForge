@@ -10,12 +10,33 @@ import vosk
 import json
 import time
 
+def get_resource_path(relative_path):
+    """获取资源绝对路径 (兼容开发环境和打包环境)"""
+    if hasattr(sys, '_MEIPASS'):
+        # 如果是打包后运行，基准路径是临时目录
+        base_path = sys._MEIPASS
+    else:
+        # 如果是源代码运行，基准路径是项目根目录
+        # (假设当前 voice_engine.py 在 src 下，根目录是上一级)
+        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    
+    return os.path.join(base_path, relative_path)
+
 class VoiceEngine:
     def __init__(self):
         # 动态获取模型路径
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        self.model_path = os.path.join(current_dir, "..", "resources", "model")
+        # 策略：模型在 exe 旁边的 resources/model 里
+        # 注意：这里如果是外部资源，就不能用 _MEIPASS 了，而是用 sys.executable
         
+        if hasattr(sys, 'frozen'):
+            # 打包后：exe 所在目录
+            base_dir = os.path.dirname(sys.executable)
+        else:
+            # 开发中：项目根目录
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            
+        self.model_path = os.path.join(base_dir, "resources", "model")
+
         if not os.path.exists(self.model_path):
             print(f"错误：找不到模型路径 {self.model_path}")
             sys.exit(1)

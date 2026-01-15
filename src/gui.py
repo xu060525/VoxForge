@@ -2,11 +2,18 @@
 专门管理界面逻辑
 """
 
+import sys
+import os
 import eel
 import threading
 
 class GUI:
     def __init__(self):
+        if hasattr(sys, '_MEIPASS'):
+            # 打包后，web 在临时目录里
+            web_dir = os.path.join(sys._MEIPASS, 'web')
+        else:
+            web_dir = 'web'
         # 初始化 Eel, 指定 web 文件夹路径
         eel.init('web')
 
