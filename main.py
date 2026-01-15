@@ -76,7 +76,6 @@ def main():
                     gui.update_status("已暂停 (仅响应'开始识别')", "idle")
                 return
             
-            # === 退出程序，关闭窗口 ===
             if "退出" in cmd or "再见" in cmd or "exit" in cmd:
                 # 1. 礼貌道别
                 # 注意：这里不能用 action_engine.speak() 异步线程

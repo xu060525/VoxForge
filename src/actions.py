@@ -10,23 +10,79 @@ import pyttsx3
 import threading
 import datetime
 import time
+import requests
+import pyperclip
 
 # 定义一个动作执行器类
 class ActionEngine:
     def __init__(self):
         print("动作引擎已经就绪")
+
+        # 多轮对话状态机
+        self.pending_confirmation = None    # 存字符串，例如 "read_clipboard"
+        self.pending_data = None    # 存数据
+
         pass
 
     def execute(self, text):
         """
         根据传入的文本 text, 判断意图并执行动作
         """
-        # 统一转换成小写，方便匹配
-        # cmd = text.lower()
+        # 保留原始文本
+        raw_text = text
+
         # 去除所有空格，不区分大小写
         cmd = text.replace(" ", "").lower()
 
-        print(f"正在解析指令: {cmd}")
+        print(f"解析: 原始[{raw_text}] | 清洗[{cmd}]")
+
+        # === 优先处理：多轮对话的回复 ===
+        # 只有在有等待任务时，才拦截 "是的/确定"
+        if self.pending_confirmation:
+            if "是的" in cmd or "确定" in cmd or "读吧" in cmd or "ok" in cmd:
+                self.confirm_action()
+                return # 拦截成功，结束
+            
+            if "不用" in cmd or "取消" in cmd or "算" in cmd:
+                self.cancel_action()
+                return # 拦截成功，结束
+            
+            # 💡 关键策略：
+            # 如果用户在等待确认期间，说了一个完全不相关的指令（比如“打开百度”），
+            # 我们应该认为是“隐式取消”，直接执行新指令。
+            # 所以这里不需要 else return，直接让它往下走，
+            # 但为了严谨，最好先重置状态
+            self.reset_state() 
+
+
+        # === 智能搜索逻辑 ===
+        # 识别模式： "百度搜索" + 内容
+        if "百度搜索" in cmd:
+            # 策略：从原始文本里找 "搜索" 两个字，取它后面的所有内容
+            # 因为 Vosk 可能会把 "百度 搜索 Python" 识别成不同分词
+            # 我们用简单的逻辑：把 "百度" 和 "搜索" 替换为空，剩下的就是内容
+            keyword = cmd.replace("百度", "").replace("搜索", "")
+            
+            if keyword:
+                self.speak(f"正在百度搜索 {keyword}")
+                webbrowser.open(f"https://www.baidu.com/s?wd={keyword}")
+            else:
+                self.speak("你要搜什么？请说：百度搜索某某某")
+            return
+
+        # === 天气查询逻辑 ===
+        if "天气" in cmd:
+            # 简单版：只查默认城市
+            # 进阶版：提取城市名 (比如 "查询上海天气")
+            city = "Beijing" # 默认
+            
+            if "上海" in cmd: city = "Shanghai"
+            elif "广州" in cmd: city = "Guangzhou"
+            elif "深圳" in cmd: city = "Shenzhen"
+            # ... 可以加更多
+            
+            self.check_weather(city)
+            return
 
         # === 优先处理：时间查询 ===
         if "几点了" in cmd or "时间" in cmd:
@@ -89,6 +145,10 @@ class ActionEngine:
             pyautogui.hotkey('win', 'd')
             pyautogui.press('volumemute')
             webbrowser.open("https://github.com")
+            return
+        
+        if "朗读剪贴板"  in cmd or "读一下" in cmd:
+            self.read_clipboard()
             return
 
         # === 兜底回复 ===
@@ -172,6 +232,94 @@ class ActionEngine:
         except Exception as e:
             print(f"截图失败: {e}")
             self.speak("截图失败，请检查日志")
+
+    # === 查询天气 ===
+    def check_weather(self, city="Beijing"):
+        # 默认查背景，后面我们可以支持其他城市
+        self.speak(f"正在查询{city}的天气...")
+
+        try:
+            # format=3 表示简短格式：地区: 天气图标 温度
+            # lang=zh 表示中文
+            url = f"https://wttr.in/{city}?format=3&lang=zh"
+            
+            # 发送请求，超时设置为5秒，防止卡死
+            response = requests.get(url, timeout=5)
+            
+            if response.status_code == 200:
+                weather_info = response.text.strip()
+                # wttr.in 有时返回格式会带一点杂质，我们直接读出来通常没问题
+                print(f"天气数据: {weather_info}")
+                
+                # 语音播报
+                # 比如返回的是 "Beijing: ⛅️ +20°C"
+                # 我们稍微处理一下，让读起来自然点
+                self.speak(f"查询到了：{weather_info}")
+            else:
+                self.speak("天气服务暂时不可用。")
+                
+        except Exception as e:
+            print(f"天气查询失败: {e}")
+            self.speak("网络连接似乎有问题，无法查询天气。")
+
+    # === 智能搜索 (参数提取) ===
+    def smart_search(self, command):
+        # 假设指令是 "百度搜索 Python 教程"
+        # 我们需要把 "百度搜索" 去掉，提取后面的 "Python 教程"
+        
+        target = ""
+        
+        if "百度搜索" in command:
+            # 简单粗暴的字符串切分
+            # command 是去除了空格的，比如 "百度搜索python教程"
+            # 这种切分稍微有点难，因为我们之前在 main.py 把空格全删了...
+            # 💡 这是一个坑！还记得吗？
+            pass
+
+    # === 技能: 智能剪贴板朗读 ===
+    def read_clipboard(self):
+        text = pyperclip.paste().strip()
+        
+        if not text:
+            self.speak("剪贴板是空的。")
+            return
+
+        if len(text) <= 50:
+            # 短文本，直接读
+            self.speak(f"剪贴板内容是：{text}")
+        else:
+            # 长文本，进入【确认态】
+            self.pending_data = text
+            self.pending_confirmation = "read_clipboard"
+            
+            # 提示用户
+            snippet = text[:20].replace("\n", " ") # 取前20个字预览
+            self.speak(f"剪贴板内容较长，共有{len(text)}个字。开头是：{snippet}... 确定要朗读全文吗？")
+
+    # === 核心: 处理确认指令 ===
+    def confirm_action(self):
+        """当用户说'是的/确定'时调用"""
+        if self.pending_confirmation == "read_clipboard":
+            self.speak("好的，开始朗读...")
+            # 这里读全文
+            self.speak(self.pending_data)
+            # 读完重置状态
+            self.reset_state()
+        else:
+            # 如果当前没有在等确认，用户却说了“是的”，可以忽略或回一句
+            self.speak("我不明白你要确认什么。")
+
+    def cancel_action(self):
+        """当用户说'不用了/取消'时调用"""
+        if self.pending_confirmation:
+            self.speak("好的，已取消。")
+            self.reset_state()
+    
+    def reset_state(self):
+        self.pending_confirmation = None
+        self.pending_data = None
+
+
 
 # 单独测试代码
 if __name__ == "__main__":
