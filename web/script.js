@@ -41,3 +41,24 @@ function toggleListening() {
         update_status("正在监听...", "listening");
     }
 }
+
+//暴露给 Python 调用的函数
+eel.expose(js_update_toggle_btn);
+function js_update_toggle_btn(isActive) {
+    let btn = document.getElementById("toggle-btn");
+    if (isActive) {
+        btn.innerText = "暂停";
+        btn.style.backgroundColor = "";
+        isListening = true;
+    } else {
+        btn.innerText = "开始";
+        btn.style.backgroundColor = "#555"; 
+        isListening = false;
+    }
+}
+
+// 窗口关闭函数
+eel.expose(close_window);
+function close_window() {
+    window.close(); // 尝试关闭浏览器窗口
+}

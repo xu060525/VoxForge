@@ -31,3 +31,6 @@ class GUI:
 
     def add_bot_message(self, text):
         eel.add_message(text, "bot")
+
+    def close(self):
+        eel.close_window()

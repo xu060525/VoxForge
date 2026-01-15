@@ -14,27 +14,29 @@ from src.actions import ActionEngine
 from src.gui import GUI
 
 # 全局变量
-global_voice_engine = None
+global_system_active = True # 默认是活跃状态
+global_gui = None   # 方便我们在 set_listening_state 里通知前端更新UI
 
 # 暴露给JS的函数
 @eel.expose
 def set_listening_state(state):
     # state 是 JS 传过来的 true/false
-    global global_voice_engine
-    if global_voice_engine:
-        if state:
-            global_voice_engine.resume()
-        else:
-            global_voice_engine.pause()
+    global global_system_active
+    global_system_active = state
+    # 这里不需要去控制 voice_engine 了，知识改变一个布尔值变量
+    print(f"状态切换: {'活跃' if state else '静默'}")
 
 def main():
     # 引用全局变量
-    global global_voice_engine
+    global global_gui
 
-    # 1. 实例化三大模块
+    # 实例化三大模块
     gui = GUI()
     action_engine = ActionEngine()
     voice_engine = VoiceEngine()
+
+    # 保存引用
+    global_gui = gui
 
     # 把实例化的对象赋给全局变量
     global_voice_engine = voice_engine
@@ -49,16 +51,68 @@ def main():
 
         # 定义当听到声音时的回调
         def on_hear(text):
-            # A. 更新界面：显示用户说了啥
-            gui.update_status("正在分析...", "processing")
-            gui.add_user_message(text)
+            global global_system_active
             
-            # B. 执行动作
-            action_engine.execute(text)
+            # 清洗文本
+            cmd = text.replace(" ", "").lower()
             
-            # C. 动作执行完，恢复监听状态
-            gui.add_bot_message(f"已执行: {text}") # 简单回显
-            gui.update_status("继续监听中...", "listening")
+            # === 无论当前是什么状态，都要检查“唤醒/休眠”指令 ===
+            
+            if "开始识别" in cmd or "恢复监听" in cmd:
+                if not global_system_active:
+                    global_system_active = True
+                    action_engine.speak("好的，我回来了")
+                    # 通知前端更新按钮状态 (这一步很重要，保持界面同步)
+                    # 我们需要去 script.js 里写一个 updateToggleBtnState 函数
+                    eel.js_update_toggle_btn(True) 
+                    gui.update_status("正在监听...", "listening")
+                return
+
+            if "停止识别" in cmd or "暂停监听" in cmd:
+                if global_system_active:
+                    global_system_active = False
+                    action_engine.speak("好的，进入静默模式")
+                    eel.js_update_toggle_btn(False)
+                    gui.update_status("已暂停 (仅响应'开始识别')", "idle")
+                return
+            
+            # === 退出程序，关闭窗口 ===
+            if "退出" in cmd or "再见" in cmd or "exit" in cmd:
+                # 1. 礼貌道别
+                # 注意：这里不能用 action_engine.speak() 异步线程
+                # 因为如果主程序退太快，声音还没发出来就被掐断了
+                # 但为了简单，我们先发指令，稍等一下再关
+                action_engine.speak("好的，期待下次为您服务。")
+                
+                # 2. 更新界面状态
+                gui.add_bot_message("系统正在关闭...")
+                
+                # 3. 定义一个延时关闭函数
+                def shutdown_sequence():
+                    time.sleep(2) # 等2秒，让 TTS 把话说完
+                    # 调用前端关闭窗口，这会触发 main.py 最底部的异常捕获，从而结束程序
+                    eel.close_window()
+                    # 双重保险：如果前端没关掉，后端强制退出
+                    # time.sleep(1)
+                    # os._exit(0) 
+
+                # 启动关闭线程
+                threading.Thread(target=shutdown_sequence).start()
+                return
+
+
+            # === 只有在活跃状态下，才执行普通指令 ===
+            if global_system_active:
+                gui.update_status("正在分析...", "processing")
+                gui.add_user_message(text)
+                
+                action_engine.execute(text)
+                
+                gui.add_bot_message(f"已执行: {text}")
+                gui.update_status("继续监听中...", "listening")
+            else:
+                # 静默状态下，听到普通话语，直接忽略，不打印也不执行
+                print(f"静默中，忽略指令: {text}")
 
         # 启动语音引擎的监听循环
         voice_engine.listen_loop(on_hear)

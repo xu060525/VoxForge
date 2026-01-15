@@ -53,16 +53,17 @@ class VoiceEngine:
         """
         rec = vosk.KaldiRecognizer(self.model, 16000)
         
-        print("\n监听已启动，请说话...")
+        print("\n监听已启动, 请说话...")
         
         # 打开麦克风流
         with sd.RawInputStream(samplerate=16000, blocksize=8000, device=None,
                                dtype='int16', channels=1, callback=self._callback):
             while True:
                 # 核心逻辑：如果暂停了，就不从队列读取数据
-                if self.is_paused:
-                    time.sleep(0.5) # 休息0.5秒，避免占用CPu
-                    continue    # 不执行下面的识别逻辑
+                # if self.is_paused:
+                #     time.sleep(0.5) # 休息0.5秒，避免占用CPu
+                #     continue    # 不执行下面的识别逻辑
+                # 现在换成软开关：关闭时识别到“开始识别”就开始
 
                 data = self.q.get()
                 if rec.AcceptWaveform(data):

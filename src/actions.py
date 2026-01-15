@@ -26,7 +26,7 @@ class ActionEngine:
 
         print(f"正在解析指令: {cmd}")
 
-        # === 规则1：网页浏览 ===
+        # === 网页浏览 ===
         if "打开百度" in cmd:
             self.speak("正在为您打开百度")
             webbrowser.open("https://www.baidu.com")
@@ -42,7 +42,7 @@ class ActionEngine:
             webbrowser.open("https://www.bilibili.com")
             return
         
-        # === 规则2：系统应用（Windows）===
+        # === 系统应用（Windows）===
         # 注意：os.system 或 os.startfile 仅限 Windows 比较好用
         if "打开记事本" in cmd:
             self.speak("启动记事本")
@@ -64,7 +64,7 @@ class ActionEngine:
             pyautogui.hotkey('win', 'd')
             return
         
-        # === 规则 3: 兜底回复 ===
+        # === 兜底回复 ===
         # 如果什么都没匹配到
         print(f"未知指令: {cmd}")
 
