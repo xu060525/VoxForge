@@ -13,3 +13,5 @@ env/
 
 # 敏感信息或超大文件
 resources/model/
+docs/
+captures/
