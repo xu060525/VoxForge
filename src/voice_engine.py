@@ -8,6 +8,7 @@ import queue
 import sounddevice as sd    # 比 pyaudio 更简单
 import vosk
 import json
+import time
 
 class VoiceEngine:
     def __init__(self):
@@ -23,10 +24,21 @@ class VoiceEngine:
             print("正在初始化语音模型...")
             self.model = vosk.Model(self.model_path)
             self.q = queue.Queue()
+            # 定义暂停标志位
+            self.is_paused = False
             print("语音引擎初始化完成")
         except Exception as e:
             print(f"模型加载失败: {e}")
             sys.exit(1)
+
+    # 新增两个控制方法
+    def pause(self):
+        self.is_paused = True
+        print("语音监听已暂停")
+
+    def resume(self):
+        self.is_paused = False
+        print("语音监听已恢复")
 
     def _callback(self, indata, frames, time, status):
         """麦克风回调函数 (内部使用)"""
@@ -41,12 +53,17 @@ class VoiceEngine:
         """
         rec = vosk.KaldiRecognizer(self.model, 16000)
         
-        print("\n 监听已启动，请说话...")
+        print("\n监听已启动，请说话...")
         
         # 打开麦克风流
         with sd.RawInputStream(samplerate=16000, blocksize=8000, device=None,
                                dtype='int16', channels=1, callback=self._callback):
             while True:
+                # 核心逻辑：如果暂停了，就不从队列读取数据
+                if self.is_paused:
+                    time.sleep(0.5) # 休息0.5秒，避免占用CPu
+                    continue    # 不执行下面的识别逻辑
+
                 data = self.q.get()
                 if rec.AcceptWaveform(data):
                     result = json.loads(rec.Result())

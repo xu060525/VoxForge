@@ -6,11 +6,14 @@ import os
 import webbrowser
 import platform
 import pyautogui
+import pyttsx3
+import threading
 
 # 定义一个动作执行器类
 class ActionEngine:
     def __init__(self):
         print("动作引擎已经就绪")
+        pass
 
     def execute(self, text):
         """
@@ -18,7 +21,7 @@ class ActionEngine:
         """
         # 统一转换成小写，方便匹配
         # cmd = text.lower()
-        # 去除所有空格，并不区分大小写
+        # 去除所有空格，不区分大小写
         cmd = text.replace(" ", "").lower()
 
         print(f"正在解析指令: {cmd}")
@@ -65,12 +68,30 @@ class ActionEngine:
         # 如果什么都没匹配到
         print(f"未知指令: {cmd}")
 
-    def speak(self, response):
+    def speak(self, text):
         """
-        (预留接口) 以后这里会接入 TTS 语音合成，让电脑说话
-        目前先用 print 代替
+        接入 TTS 语音合成，让电脑说话
         """
-        print(f"助手回复: {response}")
+        # 先在终端打印，方便调试
+        print(f"助手回复: {text}")
+
+        # 定义一个内部函数，专门负责说话
+        # pyttsx3 在多线程环境下，最好是“谁用谁初始化”，防止线程冲突 crash
+        def _speak_thread():
+            try:
+                engine = pyttsx3.init()
+                # 调整语速
+                rate = engine.getProperty('rate')
+                engine.setProperty('rate', rate - 20)
+
+                engine.say(text)
+                engine.runAndWait()
+            except Exception as e:
+                print(f"语音合成出错: {e}")
+
+        # 启动一个临时线程去执行
+        t = threading.Thread(target=_speak_thread)
+        t.start()
 
 # 单独测试代码
 if __name__ == "__main__":

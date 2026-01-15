@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>VoxForge</title>
+    <link rel="stylesheet" href="style.css">
+    <!--  引入 Eel 的核心 JS, 运行时自动生成，不需要手动创建  -->
+    <script type="text/javascript" src="/eel.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>VoxForge</h1>
+        <div class="status-box">
+            <div id="status-indicator" class="circle"></div>
+            <span id="status-text">系统就绪</span>
+            <button id="toggle-btn" onclick="toggleListening()" style="margin-left: auto;">暂停</button>
+        </div>
+
+        <div class="chat-box" id="chat-box">
+            <!-- 对话记录会插入到这里 -->
+            <div class="message system">初始化完成...</div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

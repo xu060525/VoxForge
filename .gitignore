@@ -9,6 +9,7 @@ env/
 # IDE 配置文件
 .vscode/
 .idea/
+.env
 
 # 敏感信息或超大文件
 resources/model/
