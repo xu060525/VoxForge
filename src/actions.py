@@ -14,6 +14,7 @@ import requests
 import pyperclip
 
 from .llm_engine import LLMEngine
+from .tools import ToolBox
 
 # 定义一个动作执行器类
 class ActionEngine:
@@ -25,6 +26,7 @@ class ActionEngine:
         self.pending_data = None    # 存数据
 
         self.llm = LLMEngine()
+        self.tools = ToolBox()
 
         pass
 
@@ -166,12 +168,35 @@ class ActionEngine:
         # self.speak("稍等...") 
         
         # 2. 调用 LLM
-        reply = self.llm.chat(raw_text)
+        response = self.llm.chat(raw_text)
         
-        # 3. 打印并朗读结果
-        print(f"AI回复: {reply}")
-        self.speak(reply)
-
+        # 判断返回类型
+        if isinstance(response, dict):
+            if response["type"] == "text":
+                # 普通聊天
+                reply = response["data"]
+                print(f"AI: {reply}")
+                self.speak(reply)
+                
+            elif response["type"] == "command":
+                # === 触发了特工任务！===
+                cmd_data = response["data"]
+                action = cmd_data.get("action")
+                
+                if action == "create_file":
+                    filename = cmd_data.get("filename")
+                    content = cmd_data.get("content")
+                    
+                    self.speak(f"正在为您创建文件：{filename}")
+                    
+                    # 调用工具
+                    success, msg = self.tools.create_file(filename, content)
+                    
+                    print(msg)
+                    self.speak("文件创建完成，请检查桌面。")
+        else:
+            # 异常情况 (比如返回了纯字符串错误信息)
+            self.speak(str(response))
     def speak(self, text):
         """
         接入 TTS 语音合成，让电脑说话

@@ -21,7 +21,7 @@ captures/
 build/
 # PyInstaller 生成的最终发布目录 (exe太大了，不要传git，用 Release 功能发布)
 dist/
-# PyInstaller 的 spec 文件 (⚠️这个通常建议保留！它是打包配方，应该上传)
+# PyInstaller 的 spec 文件 (这个通常建议保留！它是打包配方，应该上传)
 # 如果你不想传也可以忽略，但建议保留，方便别人或你自己以后打包
 # VoxForge.spec 
 
