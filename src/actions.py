@@ -13,6 +13,8 @@ import time
 import requests
 import pyperclip
 
+from .llm_engine import LLMEngine
+
 # 定义一个动作执行器类
 class ActionEngine:
     def __init__(self):
@@ -21,6 +23,8 @@ class ActionEngine:
         # 多轮对话状态机
         self.pending_confirmation = None    # 存字符串，例如 "read_clipboard"
         self.pending_data = None    # 存数据
+
+        self.llm = LLMEngine()
 
         pass
 
@@ -151,9 +155,22 @@ class ActionEngine:
             self.read_clipboard()
             return
 
-        # === 兜底回复 ===
-        # 如果什么都没匹配到
-        print(f"未知指令: {cmd}")
+        # === 规则匹配结束，进入 LLM 兜底 ===
+        
+        # 现在的逻辑：
+        print(f"规则库未命中，转交 AI 处理: {raw_text}")
+        
+        # 1. 告诉用户我在想 (因为网络请求有延迟)
+        # 这里的技巧：可以放一个短的提示音，或者让界面转圈
+        # 咱们简单点，直接让它不说话，静静地想，或者说“稍等”
+        # self.speak("稍等...") 
+        
+        # 2. 调用 LLM
+        reply = self.llm.chat(raw_text)
+        
+        # 3. 打印并朗读结果
+        print(f"AI回复: {reply}")
+        self.speak(reply)
 
     def speak(self, text):
         """

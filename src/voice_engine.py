@@ -52,6 +52,15 @@ class VoiceEngine:
             print(f"模型加载失败: {e}")
             sys.exit(1)
 
+    def close(self):
+        print("正在释放语音引擎资源...")
+        # 显式删除对象，触发 __del__
+        # 在程序彻底退出前手动删，此时 C 库肯定还在
+        if hasattr(self, 'model'):
+            del self.model 
+        if hasattr(self, 'rec'): # 如果你把 rec 保存为 self.rec 的话
+            del self.rec
+
     # 新增两个控制方法
     def pause(self):
         self.is_paused = True

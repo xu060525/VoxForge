@@ -89,6 +89,9 @@ def main():
                 # 3. 定义一个延时关闭函数
                 def shutdown_sequence():
                     time.sleep(2) # 等2秒，让 TTS 把话说完
+                    # 手动清理
+                    print("正在清理资源...")
+                    voice_engine.close()
                     # 调用前端关闭窗口，这会触发 main.py 最底部的异常捕获，从而结束程序
                     eel.close_window()
                     # 双重保险：如果前端没关掉，后端强制退出
